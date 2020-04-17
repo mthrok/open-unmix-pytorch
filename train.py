@@ -22,16 +22,24 @@ def train(args, unmix, device, train_sampler, optimizer):
     losses = utils.AverageMeter()
     unmix.train()
     pbar = tqdm.tqdm(train_sampler, disable=args.quiet)
+    ite = 0
+    t0 = time.monotonic()
+    time_spent_on_nn = 0.0
     for x, y in pbar:
+        ite += 1
         pbar.set_description("Training batch")
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
+        t00 = time.monotonic()
         Y_hat = unmix(x)
         Y = unmix.transform(y)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
         losses.update(loss.item(), Y.size(1))
+        time_spent_on_nn += time.monotonic() - t00
+    elapsed = (time.monotonic() - t0)
+    print(f'\nTraining: {ite} batches. {elapsed} seconds (NN: {time_spent_on_nn}).\n')
     return losses.avg
 
 
